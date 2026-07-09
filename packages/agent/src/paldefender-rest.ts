@@ -84,8 +84,8 @@ export function getPdRestStatus(rec: InstanceRecord, ctx: DriverContext): PdRest
   return { installed: true, configExists: true, enabled: true, hasToken };
 }
 
-/** Flip Enabled=true in RESTConfig.json (preserving the rest of the file). */
-export function enablePdRest(rec: InstanceRecord, ctx: DriverContext): void {
+/** Set Enabled in RESTConfig.json (preserving the rest of the file). */
+export function setPdRestEnabled(rec: InstanceRecord, ctx: DriverContext, enabled: boolean): void {
   const dir = pdDir(rec, ctx);
   if (!dir) throw Object.assign(new Error("尚未安裝 PalDefender"), { statusCode: 409 });
   const file = path.join(dir, "RESTAPI", "RESTConfig.json");
@@ -98,8 +98,24 @@ export function enablePdRest(rec: InstanceRecord, ctx: DriverContext): void {
   } catch {
     throw Object.assign(new Error("RESTConfig.json 格式損壞"), { statusCode: 409 });
   }
-  cfg.Enabled = true;
+  cfg.Enabled = enabled;
   fs.writeFileSync(file, JSON.stringify(cfg, null, 4));
+}
+
+/** Create the agent's bearer token file if missing (and reloadcfg). Returns
+ * whether the token now exists. Lets the UI provision access without the raw
+ * editor; regenerate=true rotates it. */
+export async function provisionPdToken(
+  rec: InstanceRecord,
+  ctx: DriverContext,
+  regenerate: boolean,
+): Promise<boolean> {
+  const dir = pdDir(rec, ctx);
+  if (!dir) throw Object.assign(new Error("尚未安裝 PalDefender"), { statusCode: 409 });
+  const file = path.join(dir, "RESTAPI", "Tokens", TOKEN_FILE);
+  if (regenerate) fs.rmSync(file, { force: true });
+  await ensureToken(rec, dir);
+  return fs.existsSync(file);
 }
 
 /** Map PalDefender's error codes to something a manager can act on. */

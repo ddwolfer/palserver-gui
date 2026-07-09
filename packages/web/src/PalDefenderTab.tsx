@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiAlertTriangle, FiFileText, FiServer, FiShield } from "react-icons/fi";
+import { FiAlertTriangle, FiCheck, FiFileText, FiKey, FiServer, FiShield } from "react-icons/fi";
 import {
   PALDEFENDER_OPTIONS,
   PD_CATEGORY_LABELS,
@@ -16,7 +16,6 @@ import { btn, btnGhost, card, errorCls, inputCls } from "./ui";
 
 const KEYS = Object.keys(PALDEFENDER_OPTIONS) as PdOptionKey[];
 const RAW_PATH = "Pal/Binaries/Win64/PalDefender/Config.json";
-const REST_CONFIG_PATH = "Pal/Binaries/Win64/PalDefender/RESTAPI/RESTConfig.json";
 const effective = (values: PalDefenderConfig, k: PdOptionKey) =>
   values[k] ?? PALDEFENDER_OPTIONS[k].default;
 
@@ -118,18 +117,28 @@ export function PalDefenderTab({
       <RestStatusCard
         rest={rest}
         running={running}
-        onEnable={async () => {
+        onToggle={async (enabled) => {
           setError(null);
           try {
-            await client.enablePalDefenderRest(instanceId);
-            setNotice("已啟用 REST API — 重啟伺服器後,玩家分頁即可查看帕魯與背包");
+            await client.setPalDefenderRestEnabled(instanceId, enabled);
+            setNotice(enabled ? "已啟用 REST API — 重啟伺服器後生效" : "已停用 REST API — 重啟後生效");
             setTimeout(() => setNotice(null), 4000);
             await refresh();
           } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
           }
         }}
-        onEditConfig={() => setEditingRaw(REST_CONFIG_PATH)}
+        onProvisionToken={async () => {
+          setError(null);
+          try {
+            await client.provisionPalDefenderToken(instanceId, rest?.hasToken ?? false);
+            setNotice("存取權杖已就緒 — 若查詢顯示尚未生效,重啟伺服器一次");
+            setTimeout(() => setNotice(null), 4000);
+            await refresh();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+          }
+        }}
       />
 
       {[...grouped.entries()].map(([category, keys]) => (
@@ -178,56 +187,70 @@ export function PalDefenderTab({
   );
 }
 
-/** REST API status: managers should know that enabling it unlocks player
- * detail (pals & inventory). Offers a one-click enable + raw config edit. */
+/** REST API status: a toggle to enable it (which unlocks player detail) and a
+ * button to provision the access token — no raw file editing needed. */
 function RestStatusCard({
   rest,
   running,
-  onEnable,
-  onEditConfig,
+  onToggle,
+  onProvisionToken,
 }: {
   rest: PdRestStatus | null;
   running: boolean;
-  onEnable: () => void;
-  onEditConfig: () => void;
+  onToggle: (enabled: boolean) => void;
+  onProvisionToken: () => void;
 }) {
   if (!rest || !rest.installed) return null;
 
   return (
-    <div className={card}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="inline-flex items-center gap-2 text-sm font-extrabold">
-            <FiServer className="size-4 text-pal" /> PalDefender REST API
-            {rest.enabled ? (
-              <span className="rounded-full bg-grass/15 px-2 py-0.5 text-xs font-bold text-grass">已啟用</span>
-            ) : (
-              <span className="rounded-full bg-sun/15 px-2 py-0.5 text-xs font-bold text-sun">未啟用</span>
-            )}
-          </h3>
-          <p className="mt-1 max-w-xl text-[13px] text-ink-muted">
-            {rest.enabled
-              ? rest.hasToken
-                ? "已啟用且存取權杖就緒。玩家分頁點玩家即可查看其帕魯與背包。"
-                : "已啟用。首次查看玩家細節時,agent 會自動建立存取權杖 — 若查詢顯示「權杖尚未生效」,重啟伺服器一次即可。"
-              : rest.reason ?? "啟用後即可在玩家分頁查看玩家的帕魯與背包。"}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {rest.configExists && (
-            <button className={`${btnGhost} inline-flex items-center gap-1.5`} onClick={onEditConfig}>
-              <FiFileText className="size-4" /> 編輯 RESTConfig.json
-            </button>
-          )}
-          {!rest.enabled && rest.configExists && (
-            <button className={btn} onClick={onEnable} disabled={running} title={running ? "建議停止後啟用,並重啟以生效" : undefined}>
-              一鍵啟用
-            </button>
-          )}
-        </div>
+    <div className={`${card} flex flex-col gap-3`}>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="inline-flex items-center gap-2 text-sm font-extrabold">
+          <FiServer className="size-4 text-pal" /> PalDefender REST API
+        </h3>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={rest.enabled}
+          aria-label="啟用 REST API"
+          onClick={() => rest.configExists && onToggle(!rest.enabled)}
+          disabled={!rest.configExists}
+          className={`relative h-7 w-12 rounded-full transition disabled:opacity-40 ${rest.enabled ? "bg-grass" : "bg-line"}`}
+        >
+          <span
+            className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${rest.enabled ? "left-6" : "left-1"}`}
+          />
+        </button>
       </div>
-      {!rest.enabled && rest.configExists && (
-        <p className="mt-2 text-xs text-ink-muted">啟用後需重啟伺服器才會生效。</p>
+
+      <p className="text-[13px] text-ink-muted">
+        {!rest.configExists
+          ? rest.reason ?? "尚未生成 REST 設定 — 啟動一次伺服器即會產生。"
+          : rest.enabled
+            ? "啟用後,可在玩家分頁點玩家查看其帕魯與背包。變更需重啟伺服器才會生效。"
+            : "啟用後,可在玩家分頁點玩家查看其帕魯與背包。"}
+      </p>
+
+      {rest.enabled && rest.configExists && (
+        <div className="flex flex-wrap items-center gap-3 border-t-2 border-line pt-3">
+          <span className="text-[13px] font-bold">
+            存取權杖:
+            {rest.hasToken ? (
+              <span className="ml-1 inline-flex items-center gap-1 text-grass">
+                <FiCheck className="size-3.5" /> 已設定
+              </span>
+            ) : (
+              <span className="ml-1 text-sun">尚未設定</span>
+            )}
+          </span>
+          <button
+            className={`${rest.hasToken ? btnGhost : btn} inline-flex items-center gap-1.5`}
+            onClick={onProvisionToken}
+          >
+            <FiKey className="size-4" /> {rest.hasToken ? "重新產生權杖" : "建立存取權杖"}
+          </button>
+          <span className="text-xs text-ink-muted">agent 用它讀取玩家資料,只在本機使用。</span>
+        </div>
       )}
     </div>
   );

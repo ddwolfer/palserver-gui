@@ -196,8 +196,18 @@ export class AgentClient {
     return this.request(`/api/instances/${id}/paldefender-rest`);
   }
 
-  enablePalDefenderRest(id: string): Promise<PdRestStatus> {
-    return this.request(`/api/instances/${id}/paldefender-rest/enable`, { method: "POST", body: "{}" });
+  setPalDefenderRestEnabled(id: string, enabled: boolean): Promise<PdRestStatus> {
+    return this.request(`/api/instances/${id}/paldefender-rest/enabled`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  provisionPalDefenderToken(id: string, regenerate = false): Promise<PdRestStatus> {
+    return this.request(`/api/instances/${id}/paldefender-rest/token`, {
+      method: "POST",
+      body: JSON.stringify({ regenerate }),
+    });
   }
 
   palDefenderConfig(id: string): Promise<PalDefenderConfigStatus> {

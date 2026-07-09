@@ -31,7 +31,7 @@ import * as saves from "./saves.js";
 import { getEngineSettings, writeEngineSettings } from "./engine-ini.js";
 import { getConfigHealth, regenerateConfig } from "./config-health.js";
 import { getPalDefenderConfig, writePalDefenderConfig } from "./paldefender-config.js";
-import { getPlayerDetail, getPdRestStatus, enablePdRest } from "./paldefender-rest.js";
+import { getPlayerDetail, getPdRestStatus, setPdRestEnabled, provisionPdToken } from "./paldefender-rest.js";
 import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -234,10 +234,18 @@ export function registerRoutes(
     return getPdRestStatus(rec, ctxOf(rec));
   });
 
-  app.post("/api/instances/:id/paldefender-rest/enable", async (req) => {
+  app.put("/api/instances/:id/paldefender-rest/enabled", async (req) => {
     const rec = getOr404((req.params as { id: string }).id);
-    enablePdRest(rec, ctxOf(rec));
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+    setPdRestEnabled(rec, ctxOf(rec), enabled);
     return { ...getPdRestStatus(rec, ctxOf(rec)), applied: "on-next-restart" };
+  });
+
+  app.post("/api/instances/:id/paldefender-rest/token", async (req) => {
+    const rec = getOr404((req.params as { id: string }).id);
+    const { regenerate } = z.object({ regenerate: z.boolean().default(false) }).parse(req.body ?? {});
+    const ok = await provisionPdToken(rec, ctxOf(rec), regenerate);
+    return { ...getPdRestStatus(rec, ctxOf(rec)), hasToken: ok };
   });
 
   app.get("/api/instances/:id/players/:identifier/detail", async (req) => {
