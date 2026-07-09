@@ -1,0 +1,75 @@
+# palserver GUI v2
+
+Docker-based Palworld dedicated server management — an agent daemon runs next to Docker on the host, a React Web UI connects to it remotely.
+
+```
+Web UI (React) ──HTTPS/WSS + Bearer token──▶ Agent (Node/TS, Fastify)
+                                              └─▶ Docker Engine API ──▶ PalServer containers
+```
+
+## Packages
+
+| Path | What it is |
+| --- | --- |
+| `packages/agent` | Daemon: REST + WebSocket API, Docker orchestration (dockerode), settings → `PalWorldSettings.ini` rendering, token auth |
+| `packages/web` | React + Vite Web UI: connect to any agent, instance dashboard, create/start/stop/restart, live logs |
+| `packages/shared` | Shared zod schemas and API types (world settings, instance contract) |
+| `images/vanilla` | Native Linux PalServer image (SteamCMD, installs/updates at boot) |
+| `images/modded` | (planned) Wine/Proton flavor with UE4SS + Palguard support |
+
+## Development
+
+```sh
+pnpm install
+pnpm build
+
+# terminal 1 — agent (prints the API token on first start)
+pnpm dev:agent
+
+# terminal 2 — web UI on http://localhost:5173
+pnpm dev:web
+```
+
+The agent listens on `:8250` by default and stores state in `~/.palserver-agent` (`PALSERVER_AGENT_PORT` / `PALSERVER_DATA_DIR` to override). When `packages/web/dist` exists, the agent serves the UI itself.
+
+## Building the server image
+
+```sh
+docker build -t palserver/vanilla:latest images/vanilla
+```
+
+Instances are containers labeled `app.palserver.instance=<id>`; world saves live under `<data-dir>/instances/<id>/saved` on the host and survive container removal. Settings edits apply on the next restart.
+
+## World settings
+
+`packages/shared/src/options.ts` is the single source of truth: every option's
+type, default, range and category (per the official docs at
+docs.palworldgame.com). The zod schema, the agent's ini serializer and the web
+settings editor are all derived from it — adding an option there surfaces it
+end to end. Labels live in `packages/web/src/labels.ts` (zh_tw, carried over
+from v1 locales).
+
+## Developing on Apple Silicon
+
+The real server cannot run under Rosetta (SteamCMD is 32-bit; PalServer
+segfaults at world-save creation). Use the fake server for UI/agent work:
+
+```sh
+docker build -t palserver/dev-stub:latest images/dev-stub
+PALSERVER_IMAGE_VANILLA=palserver/dev-stub:latest pnpm dev:agent
+```
+
+Real-server verification needs an x86_64 Linux host.
+
+## Status / roadmap
+
+- [x] Agent: instance CRUD, start/stop/restart, log streaming, stats, token auth
+- [x] Web UI: connect → dashboard → instance detail (overview / world settings / logs)
+- [x] World-settings editor: schema-driven, 80+ options, category tabs, apply-on-restart
+- [x] Vanilla image via DepotDownloader (works under Rosetta for downloads; server itself needs x86_64 Linux)
+- [x] dev-stub image for macOS development
+- [ ] Modded image (Proton/Wine + UE4SS + Palguard) — feasibility spike next
+- [ ] Player management via Palworld REST API / RCON passthrough
+- [ ] Crash-loop detection surfaced in UI; auto-recreate container when image updates
+- [ ] Shared game-files volume so multiple instances don't re-download
+- [ ] Backups & schedules, multi-host aggregation in the UI, TLS guidance, i18n (reuse v1 locales)

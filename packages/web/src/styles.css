@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* palserver GUI design tokens — Palworld-community-flavored: soft, round, friendly.
+   Light = sunny grassland (cream + sky blue), dark = the plum night of GUI v1. */
+@theme {
+  --font-sans: "Nunito", "Varela Round", "Hiragino Maru Gothic ProN", "Yuanti TC",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-sky-soft: #eef7fb;
+  --color-card: #ffffff;
+  --color-card-soft: #f4fafd;
+  --color-ink: #2f3a45;
+  --color-ink-muted: #7b8794;
+  --color-pal: #3fa7e0; /* primary sky blue */
+  --color-pal-strong: #2b8ec7;
+  --color-grass: #58ba64; /* success */
+  --color-berry: #ef6a6a; /* danger */
+  --color-sun: #f2b64f; /* warning */
+  --color-line: #dcebf3;
+
+  --radius-cute: 18px;
+  --shadow-cute: 0 6px 18px rgb(63 167 224 / 0.12);
+  --shadow-cute-hover: 0 10px 24px rgb(63 167 224 / 0.2);
+}
+
+/* Dark plum palette (v1 heritage) — overrides the same tokens at runtime.
+   Utilities reference var(--color-*), so a :root override is enough;
+   @theme can't be nested inside @media. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-sky-soft: #232030;
+    --color-card: #2d2a3b;
+    --color-card-soft: #363347;
+    --color-ink: #eceaf2;
+    --color-ink-muted: #a9a5bb;
+    --color-pal: #5bb8ec;
+    --color-pal-strong: #7ec8f0;
+    --color-line: #403c52;
+    --shadow-cute: 0 6px 18px rgb(0 0 0 / 0.35);
+    --shadow-cute-hover: 0 10px 24px rgb(0 0 0 / 0.45);
+  }
+}
+
+body {
+  background-color: var(--color-sky-soft);
+  background-image: radial-gradient(1200px 500px at 50% -10%, rgb(63 167 224 / 0.14) 0%, transparent 60%),
+    radial-gradient(900px 400px at 100% 110%, rgb(88 186 100 / 0.12) 0%, transparent 55%);
+  background-attachment: fixed;
+  color: var(--color-ink);
+}

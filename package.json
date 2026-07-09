@@ -1,0 +1,18 @@
+{
+  "name": "palserver-gui",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "description": "Docker-based Palworld dedicated server management. Agent daemon + remote Web UI.",
+  "author": "Dalufishe",
+  "license": "MIT",
+  "packageManager": "pnpm@11.10.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:agent": "pnpm --filter @palserver/agent dev",
+    "dev:web": "pnpm --filter @palserver/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

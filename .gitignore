@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+data/
+.env
+
+# v1 reference copy (its own repo: Dalufishe/palserver-GUI) — not part of v2
+deperated/
