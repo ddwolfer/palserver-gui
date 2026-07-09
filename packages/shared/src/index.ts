@@ -112,6 +112,32 @@ export interface ModsStatus {
 
 export type ModComponent = "ue4ss" | "paldefender";
 
+/* ── PalDefender whitelist & banlist ──
+ * Read from the plugin's JSON files (so the lists show even when the server
+ * is down); changes go through RCON commands, per the plugin's own guidance
+ * not to hand-edit these files. */
+
+export interface WhitelistEntry {
+  /** either a player UserId or an IP (possibly a masked range) */
+  value: string;
+  isIp: boolean;
+}
+
+export interface BanEntry {
+  userId: string | null;
+  ip: string | null;
+  reason?: string;
+}
+
+export interface ModerationLists {
+  supported: boolean;
+  reason?: string;
+  /** whether useWhitelist is on in Config.json */
+  whitelistEnabled: boolean;
+  whitelist: WhitelistEntry[];
+  bans: BanEntry[];
+}
+
 /** A log stream the instance can serve. `agent` is our own capture (install
  * progress + stdout); `game` is the server's UE log; `paldefender` is the
  * plugin's own rotating log. */

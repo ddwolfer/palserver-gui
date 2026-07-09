@@ -22,6 +22,7 @@ import * as dockerOps from "./docker.js";
 import { isInstalling, nativeDriver, updateServer } from "./native.js";
 import { cachedVersionSummary, getVersionStatus } from "./version.js";
 import { getModsStatus, installComponent, setLuaModEnabled } from "./mods.js";
+import { getModerationLists, moderation } from "./moderation.js";
 import { getLiveStatus, rest } from "./restapi.js";
 import * as files from "./files.js";
 import * as saves from "./saves.js";
@@ -225,6 +226,31 @@ export function registerRoutes(
     const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(500).default(100) })
       .parse(req.query);
     return presence.events(rec.id, limit);
+  });
+
+  // ── PalDefender whitelist & banlist ──
+  app.get("/api/instances/:id/moderation", async (req) => {
+    const rec = getOr404((req.params as { id: string }).id);
+    return getModerationLists(rec, ctxOf(rec));
+  });
+
+  app.post("/api/instances/:id/moderation/:action", async (req) => {
+    const rec = getOr404((req.params as { id: string }).id);
+    const action = z
+      .enum(["whitelist_add", "whitelist_remove", "ban", "unban", "banip", "unbanip"])
+      .parse((req.params as { action: string }).action);
+    const body = z
+      .object({ value: z.string().min(1).max(100), reason: z.string().max(200).optional() })
+      .parse(req.body);
+    switch (action) {
+      case "whitelist_add": await moderation.whitelistAdd(rec, body.value); break;
+      case "whitelist_remove": await moderation.whitelistRemove(rec, body.value); break;
+      case "ban": await moderation.ban(rec, body.value, body.reason); break;
+      case "unban": await moderation.unban(rec, body.value); break;
+      case "banip": await moderation.banIp(rec, body.value); break;
+      case "unbanip": await moderation.unbanIp(rec, body.value); break;
+    }
+    return { ok: true, action, value: body.value };
   });
 
   app.post("/api/instances/:id/announce", async (req) => {

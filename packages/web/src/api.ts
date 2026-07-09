@@ -15,6 +15,7 @@ import type {
   LogSource,
   LogSourceId,
   ModComponent,
+  ModerationLists,
   ModsStatus,
   PresenceEvent,
   RconCommandsResponse,
@@ -130,6 +131,22 @@ export class AgentClient {
 
   knownPlayers(id: string): Promise<KnownPlayer[]> {
     return this.request(`/api/instances/${id}/players/known`);
+  }
+
+  moderation(id: string): Promise<ModerationLists> {
+    return this.request(`/api/instances/${id}/moderation`);
+  }
+
+  moderate(
+    id: string,
+    action: "whitelist_add" | "whitelist_remove" | "ban" | "unban" | "banip" | "unbanip",
+    value: string,
+    reason?: string,
+  ): Promise<unknown> {
+    return this.request(`/api/instances/${id}/moderation/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ value, reason }),
+    });
   }
 
   presenceEvents(id: string, limit = 100): Promise<PresenceEvent[]> {
