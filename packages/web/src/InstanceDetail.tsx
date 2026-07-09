@@ -30,6 +30,7 @@ type Tab =
   | "engine"
   | "mods"
   | "saves"
+  | "restart"
   | "logs";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "總覽" },
@@ -40,6 +41,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "engine", label: "效能" },
   { id: "mods", label: "模組" },
   { id: "saves", label: "存檔備份" },
+  { id: "restart", label: "自動重啟" },
   { id: "logs", label: "日誌" },
 ];
 
@@ -188,6 +190,7 @@ export function InstanceDetailPage({
       {tab === "saves" && (
         <SavesTab client={client} instanceId={detail.id} running={detail.status === "running"} />
       )}
+      {tab === "restart" && <RestartCard client={client} instanceId={detail.id} />}
       {tab === "logs" && <LogsTab client={client} instanceId={detail.id} />}
     </div>
   );
@@ -272,7 +275,6 @@ function OverviewTab({
         running={detail.status === "running"}
         onUpdateStarted={onRefresh}
       />
-      <RestartCard client={client} instanceId={detail.id} />
     </div>
   );
 }

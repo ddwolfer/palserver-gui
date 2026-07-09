@@ -69,7 +69,7 @@ export function RestartCard({ client, instanceId }: { client: AgentClient; insta
   const patch = (p: Partial<RestartPolicy>) => setDraft({ ...draft, ...p });
 
   return (
-    <div className={`${card} flex flex-col gap-4 sm:col-span-2`}>
+    <div className={`${card} flex flex-col gap-4`}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="inline-flex items-center gap-2 text-sm font-extrabold">
           <FiRefreshCw className="size-4 text-pal" /> 自動重啟
