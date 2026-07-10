@@ -467,6 +467,8 @@ export interface AgentInfo {
   version: string;
   dockerVersion: string;
   instanceCount: number;
+  /** 此請求是否已授權(本機 loopback 或帶了正確 token)。前端據此決定直接進入或引導配對。 */
+  authenticated: boolean;
 }
 
 export interface ApiError {

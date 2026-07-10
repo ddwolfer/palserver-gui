@@ -10,6 +10,9 @@ export const DATA_DIR = process.env.PALSERVER_DATA_DIR
 export const PORT = Number(process.env.PALSERVER_AGENT_PORT ?? 8250);
 export const HOST = process.env.PALSERVER_AGENT_HOST ?? "0.0.0.0";
 
+/** 預設連本機(loopback)免 token;多使用者主機設 =1 強制一律要 token。 */
+export const REQUIRE_TOKEN = process.env.PALSERVER_REQUIRE_TOKEN === "1";
+
 /** Docker images used for each flavor; override to pin versions or use a registry. */
 export const IMAGES: Record<"vanilla" | "modded", string> = {
   vanilla: process.env.PALSERVER_IMAGE_VANILLA ?? "palserver/vanilla:latest",

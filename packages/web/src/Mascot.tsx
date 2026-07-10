@@ -137,9 +137,9 @@ function SponsorModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="mt-2 text-[13px] text-ink-muted">
-          嗨~我們是 <b>io software</b>,palserver GUI 就是我們做的!
-          這隻工具是免費的,如果它幫上你的忙,翻肚貓貓想討一點罐罐 🐟 ——
-          追蹤我們、或小額贊助都是超大的鼓勵,讓我們能繼續把它做得更好。
+          嗨嗨~ 我是 <b>Dalufish</b>, palserver GUI 就是我做的!
+          這隻工具是免費的, 如果它幫上你的忙, 翻肚貓貓想討一點罐罐 ——
+          追蹤我們、或小額贊助都是超大的鼓勵, 讓我們能繼續把它做得更好。
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <a className={`${btnPrimary} inline-flex items-center justify-center gap-1.5`} href={company.sponsor} target="_blank" rel="noreferrer">

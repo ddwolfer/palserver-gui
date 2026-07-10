@@ -18,6 +18,14 @@ import type { PresenceTracker } from "./presence.js";
 import type { BackupScheduler } from "./backup-scheduler.js";
 import type { RestartSupervisor } from "./supervisor.js";
 import { AGENT_VERSION } from "./env.js";
+import {
+  type AuthContext,
+  extractToken,
+  isLoopback,
+  pairingCodeMatches,
+  rotatePairingCode,
+  tokenMatches,
+} from "./auth.js";
 import type { InstanceStore, InstanceRecord } from "./store.js";
 import type { DriverContext, ServerDriver } from "./driver.js";
 import * as dockerOps from "./docker.js";
@@ -49,6 +57,7 @@ export function registerRoutes(
   presence: PresenceTracker,
   scheduler: BackupScheduler,
   supervisor: RestartSupervisor,
+  auth: AuthContext,
 ): void {
   const ctxOf = (rec: InstanceRecord): DriverContext => ({
     instanceDir: store.instanceDir(rec.id),
@@ -85,18 +94,41 @@ export function registerRoutes(
     return rec;
   };
 
-  app.get("/api/info", async (): Promise<AgentInfo> => {
+  app.get("/api/info", async (req): Promise<AgentInfo> => {
     const dockerVersion = await dockerOps.docker
       .version()
       .then((v) => v.Version)
       .catch(() => "unavailable");
+    // 公開端點,但一併回報此請求的授權狀態,讓前端判斷要直接進還是引導配對。
+    const authenticated =
+      (!auth.requireToken && isLoopback(req.ip)) || tokenMatches(extractToken(req), auth.token);
     return {
       name: "palserver-agent",
       version: AGENT_VERSION,
       dockerVersion,
       instanceCount: store.list().length,
+      authenticated,
     };
   });
+
+  // 配對:遠端裝置用好念的配對碼換發長 token。此端點本身免 token(靠配對碼保護)。
+  app.post("/api/pair", async (req, reply) => {
+    const code = String((req.body as { code?: string } | null)?.code ?? "");
+    if (!code || !pairingCodeMatches(code, auth.pairingCode)) {
+      return reply.code(401).send({ error: "invalid pairing code" });
+    }
+    return { token: auth.token };
+  });
+
+  // 輪替配對碼(需已授權);舊碼即刻失效。回傳新碼給 UI 顯示/產生邀請連結。
+  app.post("/api/pair/rotate", async () => {
+    const code = rotatePairingCode();
+    auth.pairingCode = code;
+    return { pairingCode: code };
+  });
+
+  // 已授權者可查目前配對碼,用來產生「邀請朋友遠端連線」的設定連結。
+  app.get("/api/pair/code", async () => ({ pairingCode: auth.pairingCode }));
 
   app.get("/api/instances", async (): Promise<InstanceSummary[]> => {
     return Promise.all(store.list().map(toSummary));
