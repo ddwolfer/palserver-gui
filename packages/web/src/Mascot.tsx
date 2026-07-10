@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FiX, FiExternalLink, FiHeart, FiInstagram, FiMessageCircle } from "react-icons/fi";
+import { usePromoConfig } from "./promoConfig";
 import { card, btn as btnPrimary, btnGhost } from "./ui";
 
 /**
@@ -10,14 +11,6 @@ import { card, btn as btnPrimary, btnGhost } from "./ui";
  * Clicking opens a light-hearted sponsor/company promo.
  */
 const SEEN_KEY = "palserver.mascotSeen";
-
-// io software — sponsor / follow links.
-const LINKS = {
-  instagram: "https://www.instagram.com/iosoftware.ai/",
-  sponsor: "https://buymeacoffee.com/dalufish",
-  website: "https://iosoftware.ai/",
-  discord: "https://discord.gg/sgMMdUZd3V",
-};
 
 export function Mascot() {
   const [seen, setSeen] = useState(() => localStorage.getItem(SEEN_KEY) === "1");
@@ -101,6 +94,7 @@ function CatBellyUp() {
 }
 
 function SponsorModal({ onClose }: { onClose: () => void }) {
+  const { company } = usePromoConfig();
   return (
     <div
       className="fixed inset-0 z-30 flex items-center justify-center bg-[rgb(35_32_48/0.55)] p-6 backdrop-blur-[3px]"
@@ -121,16 +115,16 @@ function SponsorModal({ onClose }: { onClose: () => void }) {
           追蹤我們、或小額贊助都是超大的鼓勵,讓我們能繼續把它做得更好。
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <a className={`${btnPrimary} inline-flex items-center justify-center gap-1.5`} href={LINKS.sponsor} target="_blank" rel="noreferrer">
+          <a className={`${btnPrimary} inline-flex items-center justify-center gap-1.5`} href={company.sponsor} target="_blank" rel="noreferrer">
             <FiHeart className="size-4" /> 贊助我們
           </a>
-          <a className={`${btnGhost} inline-flex items-center justify-center gap-1.5`} href={LINKS.instagram} target="_blank" rel="noreferrer">
+          <a className={`${btnGhost} inline-flex items-center justify-center gap-1.5`} href={company.instagram} target="_blank" rel="noreferrer">
             <FiInstagram className="size-4" /> Instagram
           </a>
-          <a className={`${btnGhost} inline-flex items-center justify-center gap-1.5`} href={LINKS.website} target="_blank" rel="noreferrer">
+          <a className={`${btnGhost} inline-flex items-center justify-center gap-1.5`} href={company.website} target="_blank" rel="noreferrer">
             <FiExternalLink className="size-4" /> 官方網站
           </a>
-          <a className={`${btnGhost} inline-flex items-center justify-center gap-1.5`} href={LINKS.discord} target="_blank" rel="noreferrer">
+          <a className={`${btnGhost} inline-flex items-center justify-center gap-1.5`} href={company.discord} target="_blank" rel="noreferrer">
             <FiMessageCircle className="size-4" /> Discord
           </a>
         </div>

@@ -2,20 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { FiCopy, FiCheck, FiGlobe, FiExternalLink, FiShield, FiMessageCircle } from "react-icons/fi";
 import type { ConnectionInfo } from "@palserver/shared";
 import type { AgentClient } from "./api";
+import { usePromoConfig } from "./promoConfig";
 import { card, btn as btnPrimary, btnGhost } from "./ui";
-
-/** Our company's IP-direct-connect setup service, promoted for public access. */
-const SERVICE = {
-  name: "IP 直連設定服務",
-  website: "https://iosoftware.ai/ip-connect-service",
-  discord: "https://discord.gg/sgMMdUZd3V",
-};
 
 /** "How do my friends join?" — the question every host actually asks, laid
  * out for non-technical users: same-network, VPN (Radmin / Tailscale), and
  * the advanced public route, each with a copy-ready address. */
 export function ConnectionCard({ client, instanceId }: { client: AgentClient; instanceId: string }) {
   const [info, setInfo] = useState<ConnectionInfo | null>(null);
+  const { ipService, vpn } = usePromoConfig();
 
   const refresh = useCallback(() => {
     client.connection(instanceId).then(setInfo).catch(() => setInfo(null));
@@ -48,14 +43,14 @@ export function ConnectionCard({ client, instanceId }: { client: AgentClient; in
           <VpnOption
             name="Radmin VPN"
             desc="免註冊、建個房間邀朋友加入,最適合遊戲聯機。"
-            site="https://www.radmin-vpn.com/"
-            tutorial="https://www.youtube.com/results?search_query=Radmin+VPN+Palworld+%E8%81%AF%E6%A9%9F+%E6%95%99%E5%AD%B8"
+            site={vpn.radmin.site}
+            tutorial={vpn.radmin.tutorial}
           />
           <VpnOption
             name="Tailscale"
             desc="用 Google/GitHub 帳號登入,安全穩定,適合長期使用。"
-            site="https://tailscale.com/"
-            tutorial="https://www.youtube.com/results?search_query=Tailscale+Palworld+%E5%B0%88%E7%94%A8%E4%BC%BA%E6%9C%8D%E5%99%A8+%E6%95%99%E5%AD%B8"
+            site={vpn.tailscale.site}
+            tutorial={vpn.tailscale.tutorial}
           />
         </div>
       </Section>
@@ -81,15 +76,15 @@ export function ConnectionCard({ client, instanceId }: { client: AgentClient; in
         <div className="mt-2 flex flex-wrap gap-2">
           <a
             className={`${btnPrimary} inline-flex items-center gap-1.5`}
-            href={SERVICE.website}
+            href={ipService.website}
             target="_blank"
             rel="noreferrer"
           >
-            <FiExternalLink className="size-4" /> {SERVICE.name}
+            <FiExternalLink className="size-4" /> {ipService.name}
           </a>
           <a
             className={`${btnGhost} inline-flex items-center gap-1.5`}
-            href={SERVICE.discord}
+            href={ipService.discord}
             target="_blank"
             rel="noreferrer"
           >
