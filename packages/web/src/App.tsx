@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GiSheep, GiEggClutch } from "react-icons/gi";
-import { FiDownload, FiPlus, FiSettings } from "react-icons/fi";
+import { FiDownload, FiHeart, FiPlus, FiSettings } from "react-icons/fi";
 import type { InstanceSummary } from "@palserver/shared";
 import { AgentClient, loadConnection, saveConnection, type Connection } from "./api";
 import { ConnectFlow } from "./ConnectFlow";
 import { SettingsModal } from "./SettingsModal";
+import { CreditsModal } from "./CreditsModal";
 import { InstanceDetailPage } from "./InstanceDetail";
 import { Mascot } from "./Mascot";
 import { AnnouncementPopup } from "./AnnouncementModal";
@@ -47,6 +48,7 @@ function Shell({ conn, onDisconnect }: { conn: Connection; onDisconnect: () => v
   const client = useRef(new AgentClient(conn, onDisconnect)).current;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
 
   return (
     <div className="mx-auto max-w-[1200px] p-6">
@@ -57,6 +59,12 @@ function Shell({ conn, onDisconnect }: { conn: Connection; onDisconnect: () => v
         </button>
         <div className="flex items-center gap-2.5">
           <span className="hidden text-[13px] text-ink-muted sm:inline">{conn.url}</span>
+          <button
+            className={`${btnGhost} inline-flex items-center gap-1.5`}
+            onClick={() => setShowCredits(true)}
+          >
+            <FiHeart className="size-4" /> 感謝名單
+          </button>
           <button
             className={`${btnGhost} inline-flex items-center gap-1.5`}
             onClick={() => setShowSettings(true)}
@@ -71,6 +79,7 @@ function Shell({ conn, onDisconnect }: { conn: Connection; onDisconnect: () => v
       {showSettings && (
         <SettingsModal client={client} conn={conn} onClose={() => setShowSettings(false)} />
       )}
+      {showCredits && <CreditsModal onClose={() => setShowCredits(false)} />}
       {selectedId ? (
         <InstanceDetailPage
           client={client}

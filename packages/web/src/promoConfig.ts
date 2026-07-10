@@ -23,6 +23,11 @@ export interface PromoConfig {
     radmin: { site: string; tutorial: string };
     tailscale: { site: string; tutorial: string };
   };
+  /** 感謝名單(header 右上角彈窗):開發人員 + 捐贈名單連結。 */
+  credits: {
+    developers: { name: string; role: string; url?: string }[];
+    donate: string;
+  };
 }
 
 const REMOTE_URL =
@@ -61,6 +66,15 @@ const DEFAULT: PromoConfig = {
       tutorial:
         "https://www.youtube.com/results?search_query=Tailscale+Palworld+%E5%B0%88%E7%94%A8%E4%BC%BA%E6%9C%8D%E5%99%A8+%E6%95%99%E5%AD%B8",
     },
+  },
+  credits: {
+    developers: [
+      { name: "Dalufish", role: "核心開發人員", url: "https://www.instagram.com/stories/easonlu0303/" },
+      { name: "147", role: "核心團隊維護者", url: "https://toc.icu" },
+      { name: "墨殘", role: "核心團隊維護者", url: "https://www.youtube.com/@Bad_Mo" },
+      { name: "LilaS", role: "核心團隊維護者・資安", url: "https://lilas-tw.com/" },
+    ],
+    donate: "https://buymeacoffee.com/dalufish",
   },
 };
 
