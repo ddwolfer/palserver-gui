@@ -10,11 +10,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev:agent": "pnpm --filter @palserver/agent dev",
-    "dev:web": "pnpm --filter @palserver/web dev",
+    "build:shared": "pnpm --filter @palserver/shared build",
+    "dev:agent": "pnpm build:shared && pnpm --filter @palserver/agent dev",
+    "dev:web": "pnpm build:shared && pnpm --filter @palserver/web dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "bundle:agent": "pnpm --filter @palserver/shared build && pnpm --filter @palserver/agent build && node scripts/bundle-agent.mjs",
+    "typecheck": "pnpm build:shared && pnpm -r typecheck",
+    "bundle:agent": "pnpm build:shared && pnpm --filter @palserver/agent build && node scripts/bundle-agent.mjs",
     "release:exe": "pnpm --filter @palserver/web build && pnpm bundle:agent && node scripts/build-sea.mjs"
   },
   "devDependencies": {
