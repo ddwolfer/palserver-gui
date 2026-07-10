@@ -1,120 +1,287 @@
-# palserver GUI v2
+# palserver GUI
 
-Palworld dedicated server management — an agent daemon runs on the server host, a React Web UI connects to it remotely.
+**幻獸帕魯(Palworld)專用伺服器的圖形化管理工具。**
+在你的主機上跑一支 agent,然後用瀏覽器管理伺服器 —— 開服、改設定、看玩家、備份存檔、裝模組,全都不用碰指令列。
+
+手機、平板、另一台電腦都能連進來管理;朋友也可以用一條連結加入管理。
+
+> *English: a web GUI for managing Palworld dedicated servers. A small agent daemon runs on the
+> server host; a React web UI talks to it over HTTP/WebSocket. The UI ships in 繁體中文 / English /
+> 日本語. See [功能總覽](#功能總覽) for the feature list.*
 
 ```
-Web UI (React) ──HTTP/WS + Bearer token──▶ Agent (Node/TS, Fastify)
-                                            ├─▶ native driver (default): spawns PalServer
-                                            │     directly on the host, no Docker needed
-                                            └─▶ docker driver (optional): PalServer containers
+瀏覽器(React Web UI)
+        │  HTTP / WebSocket(Bearer token)
+        ▼
+   agent(Node/TypeScript,Fastify)
+        ├── native 後端(預設):直接在主機上啟動 PalServer,不需要 Docker
+        └── docker 後端(beta):把 PalServer 跑在容器裡
 ```
 
-**Backends** (chosen per instance at creation):
+---
 
-- **native** (default) — the agent spawns `PalServer.exe` / `PalServer.sh` as a
-  detached host process. It can adopt an existing dedicated-server install
-  (point `serverDir` at it) or auto-install one via DepotDownloader. Survives
-  agent restarts (pid-file reattach); graceful stop via the server's REST API
-  when enabled, force-kill fallback. Works on any Windows/Linux box — no Docker.
-- **docker** — the original container flavor, kept for Linux hosts and
-  isolation-minded setups.
+## 這份文件怎麼看
 
-## Packages
-
-| Path | What it is |
+| 你是… | 從這裡開始 |
 | --- | --- |
-| `packages/agent` | Daemon: REST + WebSocket API, Docker orchestration (dockerode), settings → `PalWorldSettings.ini` rendering, token auth |
-| `packages/web` | React + Vite Web UI: connect to any agent, instance dashboard, create/start/stop/restart, live logs |
-| `packages/shared` | Shared zod schemas and API types (world settings, instance contract) |
-| `images/vanilla` | Native Linux PalServer image (SteamCMD, installs/updates at boot) |
-| `images/modded` | (planned) Wine/Proton flavor with UE4SS + Palguard support |
+| **玩家 / 開服的人** —— 只想把伺服器開起來 | [給玩家:五分鐘開服](#給玩家五分鐘開服) |
+| **伺服器管理員** —— 要長期營運、在意安全與自動化 | [給管理員:營運指南](#給管理員營運指南) |
+| **開發者** —— 想改程式、送 PR | [給開發者:開發指南](#給開發者開發指南) |
 
-## Development
+遇到問題先看 **[常見問題 FAQ](https://faq.toc.icu/)**,或到 [Discord](https://discord.gg/sgMMdUZd3V) 問。
+
+---
+
+## 功能總覽
+
+**開服與管理**
+- 建立多個伺服器實例,各自獨立的世界、埠號與設定;一鍵啟動 / 停止 / 重啟 / 刪除(刪除保留存檔)
+- 自動下載安裝 Palworld 伺服器檔案(透過 DepotDownloader),或**直接接管你既有的安裝目錄**
+- 遊戲版本檢查:比對已安裝版本與 Steam 上的最新版,一鍵更新伺服器
+- 即時日誌串流(agent / 遊戲 / PalDefender 三種來源可切換)
+
+**世界與效能設定**
+- 80+ 項世界設定的圖形化編輯器,依分類分頁,含型別、範圍與預設值;也可以直接編輯原始 `PalWorldSettings.ini`
+- `Engine.ini` 效能微調(tick rate、網路速率、逾時、GC 間隔…)附一鍵效能預設
+- 設定檔損毀時自動偵測,並提供「重建乾淨設定檔」(壞檔會先備份,不會直接刪掉)
+
+**玩家管理**
+- 線上玩家清單:等級、延遲、座標、建築數,點進去可看**他的帕魯與背包**(需 PalDefender)
+- 踢出、封鎖、白名單 —— **離線玩家也能操作**(例如幫人解封)
+- 歷史玩家名冊:agent 每 15 秒記錄一次,留下遊玩時數、上線次數、首次/最後上線;上下線時間軸
+- 全服廣播、立即存檔
+- 即時地圖:把線上玩家標在地圖上(地圖底圖需自備,見下方說明)
+
+**主控台**
+- 完整的 RCON 主控台,指令有搜尋、分類與參數表單;危險指令需二次確認
+- 需要玩家 ID 的參數會跳出玩家選擇器(含離線玩家);道具 / 帕魯 / 蛋的 ID 有圖示搜尋
+- 裝了 PalDefender 會自動把它的指令加進來
+
+**存檔與備份**
+- 排程自動備份:間隔、保留份數、沒人在線時跳過
+- 手動備份 / 還原 / 下載;還原前會自動先備份目前的世界
+- 多世界管理:列出所有世界、切換「啟用中的世界」、刪除個別玩家存檔
+- 存檔搬家教學(從別台伺服器、從 v1、從本機多人):[docs/MIGRATION.md](docs/MIGRATION.md)
+
+**模組**
+- 一鍵安裝 / 更新 / 移除 **PalDefender**(反外掛,前身 Palguard)與 **UE4SS**(Lua/藍圖模組載入器),各有穩定版與測試版通道
+- PalDefender 設定面板、Lua 模組開關、pak 模組管理
+- 檔案管理器:瀏覽、上傳、編輯、刪除伺服器目錄下的檔案
+
+**穩定性**
+- 自動重啟:排程(固定間隔或每日指定時間)、記憶體超標、崩潰自動復原(有每小時上限,避免無限重啟迴圈)
+- 重啟前會先廣播倒數並存檔;手動停止不會被當成崩潰
+
+**其他**
+- 三種語言:繁體中文 / English / 日本語;淺色 / 深色主題
+- 連線診斷:偵測公網 IP、是否在 NAT/CGNAT 後面,並提供 VPN(Tailscale / Radmin)開服教學
+- GUI 自我更新(可選):從 GitHub Releases 檢查新版,驗證 SHA256 後換檔重啟
+
+---
+
+## 系統需求
+
+| 項目 | 說明 |
+| --- | --- |
+| **作業系統** | **Windows 10+ 或 Linux(x86_64)**。macOS 可以跑 agent,但**跑不了 Palworld 伺服器**(SteamCMD/PalServer 不支援),只能拿來開發或管理遠端主機。 |
+| **硬體** | 依 Palworld 官方需求;伺服器檔案本身數十 GB,首次安裝要等一段時間 |
+| **Node.js** | **不需要**(免安裝執行檔已內含)。從原始碼跑才需要 Node 20+ 與 pnpm |
+| **Docker** | 不需要。只有選用 docker 後端(beta)時才要 |
+
+---
+
+## 給玩家:五分鐘開服
+
+> 完整的圖文教學(含邀請朋友、VPN 設定):**[docs/INSTALL.zh-TW.md](docs/INSTALL.zh-TW.md)**
+
+1. 到 [Releases](https://github.com/Wadoekeani/palserver-gui/releases) 下載你系統對應的壓縮檔
+   (`palserver-agent-windows.zip` / `-linux.zip`),解壓縮。
+2. 執行裡面的 `palserver-agent`(Windows 是 `palserver-agent.exe`)。不用先裝 Node 或 Docker。
+3. 視窗會印出一段說明,照著打開 **`http://localhost:8250`** —— 本機管理**不需要密碼**。
+4. 按「建立伺服器」。第一次會下載 Palworld 伺服器檔案(**數十 GB,請耐心等**),進度看「日誌」分頁。
+5. 裝好後按「啟動」就開服了。
+
+**邀請朋友一起管理:** 啟動視窗裡有一條 `?setup=XXXX-XXXX` 的連結,傳給對方在他的瀏覽器打開就能連進來
+(需要在同一個區網或 VPN 內)。也可以請他打開你的 agent 網址後輸入**配對碼**。
+
+**讓朋友連進遊戲:** 最簡單的方式是 VPN(Tailscale 或 Radmin),GUI 的「連線」卡片會偵測你的網路環境並給對應教學。
+如果你有公網 IP,也可以走傳統的連接埠轉發(UDP 8211)。
+
+> **關於地圖底圖:** 遊戲地圖是 Pocketpair 的美術資產,我們不能夾帶,所以「即時地圖」預設是空白的 —— 請自己貼一張圖片網址或上傳檔案,再用校正工具對齊。
+
+---
+
+## 給管理員:營運指南
+
+### 安全模型
+
+agent 只有一道門:**本機(loopback)免驗證,其他一律要 token。**
+
+- **本機管理**(`127.0.0.1`)不需要任何憑證 —— 單機自用零摩擦。
+- **其他裝置**要嘛帶 API token(`Authorization: Bearer <token>`),要嘛用**配對碼**換一把 token。
+  配對碼是好唸的 `XXXX-XXXX`(去掉了易混淆的字元),可隨時重新產生,舊碼與舊連結立刻失效。
+- token 存在資料夾裡(權限 `0600`),第一次啟動時產生並印在視窗上。
+- 多人共用的主機請設 `PALSERVER_REQUIRE_TOKEN=1`,連 loopback 也要 token。
+
+> agent 會直接操作主機上的檔案與行程,**不要把 `:8250` 直接曝露在公網上**。要遠端管理,請走 VPN(Tailscale/WireGuard)或放在反向代理後面並開 TLS。
+
+### 環境變數
+
+| 變數 | 預設 | 用途 |
+| --- | --- | --- |
+| `PALSERVER_DATA_DIR` | `~/.palserver-agent` | 所有狀態的存放位置 |
+| `PALSERVER_AGENT_PORT` | `8250` | 監聽埠 |
+| `PALSERVER_AGENT_HOST` | `0.0.0.0` | 綁定位址 |
+| `PALSERVER_REQUIRE_TOKEN` | 未設 | `=1` 時連本機也要 token |
+| `PALSERVER_TLS` | 未設 | `=1` 以 HTTPS 監聽(自簽憑證自動生成於 `<data-dir>/tls`,也可放自己的) |
+| `PALSERVER_WEB_ORIGINS` | 空 | 允許跨源連線的網站來源(逗號分隔),給獨立部署的公開 web 站用 |
+| `PALSERVER_AUTO_UPDATE` | 未設 | `=0` 完全停用 GUI 自我更新(連檢查都不做) |
+| `PALSERVER_TELEMETRY` | 未設 | `=0` 強制停用匿名使用統計 |
+| `PALSERVER_STATS_URL` | 官方統計端點 | 改成自架的統計後端 |
+| `PALSERVER_GITHUB_REPO` | `Wadoekeani/palserver-gui` | 自我更新要看哪個 repo 的 Releases |
+| `PALSERVER_IMAGE_VANILLA` | `palserver/vanilla:latest` | docker 後端用的映像 |
+
+### 資料放在哪
+
+```
+~/.palserver-agent/
+├── token                 API token(0600)
+├── pair-code             配對碼(0600)
+├── instances.json        所有實例的設定(設定的唯一真相來源)
+├── tools/                快取的 DepotDownloader
+├── tls/                  自簽憑證(PALSERVER_TLS=1 時)
+└── instances/<id>/
+    ├── server/           agent 自己安裝的伺服器檔案(接管既有安裝時不會有)
+    ├── server.pid        遊戲行程 pid
+    ├── server.log        agent 抓到的伺服器輸出
+    └── backups/          tar.gz 備份
+```
+
+伺服器行程是 **detached** 生成的,agent 重啟(或自我更新)**不會**把遊戲伺服器一起關掉;pid 檔讓 agent 重新接上。
+
+### 部署方式
+
+**免安裝執行檔(推薦)** —— 就是玩家那條路,適合絕大多數人。
+
+**用 Docker 跑 agent 本身**(Linux 主機):
+
+```sh
+docker compose up -d          # 見 docker-compose.yml
+```
+
+需要掛載 `docker.sock`,而且 host 上的資料夾路徑要與容器內一致(實例目錄會被 bind-mount 進遊戲容器)。
+
+**純 web 站 + 遠端 agent** —— Release 裡的 `palserver-web.zip` 是可獨立部署的前端;把站台網址加進 agent 的
+`PALSERVER_WEB_ORIGINS`,玩家就能從公開站台連回自己家裡的 agent。
+
+**從原始碼** —— 見下方[開發指南](#給開發者開發指南);`pnpm release:exe` 可以自己產出免安裝執行檔。
+
+### 自我更新
+
+在「設定 → GUI 更新」。預設**只檢查、不安裝**(每 6 小時),查到新版會顯示更新卡片,按下去才動作:
+下載對應平台的 `.tar.gz` → **比對 `SHA256SUMS.txt`** → 換掉執行檔與前端 → 重啟自己。也可以打開「自動安裝」。
+
+安全設計:沒有校驗檔就拒絕更新;非免安裝執行檔(例如開發模式)拒絕自我更新;有伺服器正在安裝檔案時拒絕更新
+(下載器是 agent 的子行程,重啟會中斷它);換檔失敗會把舊執行檔搬回去。
+
+### 隱私與匿名統計
+
+GUI 會回報**匿名**的使用計數(安裝數、伺服器建立/啟動數、不重複玩家數),用來了解使用規模。
+不含個資、IP、伺服器名稱或存檔內容;玩家識別碼只送單向雜湊。
+可在「設定」關閉,或 `PALSERVER_TELEMETRY=0` 強制停用。完整說明:**[PRIVACY.md](PRIVACY.md)**。
+
+---
+
+## 給開發者:開發指南
+
+### 架構
+
+前端**永遠不直接碰**遊戲的 REST API、RCON 或 PalDefender 的 API —— 那些憑證只留在 agent 裡,瀏覽器只跟 agent 說話。
+
+| 套件 | 內容 |
+| --- | --- |
+| `packages/agent` | Fastify daemon:REST + WebSocket API、行程管理、RCON、備份、模組安裝、自我更新 |
+| `packages/web` | React 18 + Vite + Tailwind 4 的 Web UI |
+| `packages/shared` | 共用的 zod schema 與 API 型別(世界設定、實例契約) |
+| `packages/stats` | Cloudflare Worker + D1,匿名統計收集端 |
+| `images/vanilla` | docker 後端用的 Linux PalServer 映像(內含 DepotDownloader) |
+| `images/dev-stub` | 假的 PalServer,給 Apple Silicon 開發用 |
+| `deperated/` | v1 的 Electron 版,只留作 UX/i18n 參考,不屬於這個 workspace |
+
+### 開始開發
+
+需要 Node 20+ 與 pnpm 11。
 
 ```sh
 pnpm install
 pnpm build
 
-# terminal 1 — agent (prints the API token on first start)
-pnpm dev:agent
-
-# terminal 2 — web UI on http://localhost:5173
-pnpm dev:web
+pnpm dev:agent    # 終端機 1 — agent(第一次會印出 API token)
+pnpm dev:web      # 終端機 2 — Web UI on http://localhost:5173
 ```
 
-The agent listens on `:8250` by default and stores state in `~/.palserver-agent` (`PALSERVER_AGENT_PORT` / `PALSERVER_DATA_DIR` to override). When `packages/web/dist` exists, the agent serves the UI itself.
+agent 預設監聽 `:8250`。當 `packages/web/dist` 存在時,agent 會自己 serve 前端(合一版)。
 
-## Building the server image
+| 指令 | 做什麼 |
+| --- | --- |
+| `pnpm typecheck` | 全 workspace 型別檢查(CI 會跑) |
+| `pnpm build` | 全部建置 |
+| `pnpm bundle:agent` | esbuild 打包成單一 CJS |
+| `pnpm release:exe` | 產出當前平台的免安裝執行檔到 `release/` |
 
-```sh
-docker build -t palserver/vanilla:latest images/vanilla
-```
+### 世界設定是 schema 驅動的
 
-Instances are containers labeled `app.palserver.instance=<id>`; world saves live under `<data-dir>/instances/<id>/saved` on the host and survive container removal. Settings edits apply on the next restart.
+`packages/shared/src/options.ts` 是**唯一的真相來源**:每個選項的型別、預設值、範圍與分類都在那裡
+(依[官方文件](https://docs.palworldgame.com/)校對)。zod schema、agent 的 ini 序列化、前端的設定編輯器全部由它衍生 ——
+**在那裡加一個選項,整條路就通了**。中文標籤在 `packages/web/src/labels.ts`。
 
-## World settings
+`Engine.ini` 與 PalDefender 的 `Config.json` 也是同樣作法,而且**寫入時採合併策略**:GUI 不管的區段、鍵與註解都會原樣保留。
 
-`packages/shared/src/options.ts` is the single source of truth: every option's
-type, default, range and category (per the official docs at
-docs.palworldgame.com). The zod schema, the agent's ini serializer and the web
-settings editor are all derived from it — adding an option there surfaces it
-end to end. Labels live in `packages/web/src/labels.ts` (zh_tw, carried over
-from v1 locales).
+### i18n
 
-## Developing on Apple Silicon
+程式碼裡的字串一律寫**中文原文**,`t("中文")` 拿原文當 key 查字典。
+`packages/web/public/i18n/{en,ja}.json` 是「中文 → 譯文」對照表,查不到就顯示中文原文,所以**漏翻不會壞版面**。
+字典會在背景從 GitHub raw 抓最新版,翻譯修正不用重新發版。
 
-The real server cannot run under Rosetta (SteamCMD is 32-bit; PalServer
-segfaults at world-save creation). Use the fake server for UI/agent work:
+### 在 Apple Silicon 上開發
+
+真的伺服器在 Rosetta 下跑不起來(SteamCMD 是 32-bit;PalServer 一存檔就 segfault)。UI/agent 開發請用假伺服器:
 
 ```sh
 docker build -t palserver/dev-stub:latest images/dev-stub
 PALSERVER_IMAGE_VANILLA=palserver/dev-stub:latest pnpm dev:agent
 ```
 
-Real-server verification needs an x86_64 Linux host.
+真伺服器的驗證需要一台 x86_64 的 Windows 或 Linux。
 
-## Status / roadmap
+### 發版
 
-- [x] Agent: instance CRUD, start/stop/restart, log streaming, stats, token auth
-- [x] Web UI: connect → dashboard → instance detail (overview / world settings / logs)
-- [x] World-settings editor: schema-driven, 80+ options, category tabs, apply-on-restart
-- [x] Native backend (default): spawn/adopt host PalServer, DepotDownloader auto-install,
-      pid reattach across agent restarts, REST-API graceful shutdown
-- [x] Docker backend (optional): vanilla image via DepotDownloader; dev-stub image for macOS
-- [x] Mods tab (native backend): one-click install/update of PalDefender
-      (anti-cheat, ex-Palguard) and UE4SS from GitHub releases, Lua-mod
-      enable/disable (both UE4SS layouts), pak-mod listing
-- [x] File manager (native backend): browse / edit text files / upload
-      (streamed, large paks ok) / delete / mkdir, confined to the instance's
-      server directory; "編輯原始檔" opens PalWorldSettings.ini directly
-- [x] Players tab: live metrics, player list (level/ping/coords, masked Steam
-      IDs), kick, ban, broadcast, save-now — proxied through the game's REST
-      API (basic auth, never exposed to the browser)
-- [x] Presence tracking: the agent polls the roster every 15s and records
-      join/leave events, sessions and playtime per player. The roster outlives
-      logouts, so offline players stay selectable as command targets (/unban)
-      and the history stays readable while the server is down.
-- [x] Live map: players plotted on the game's [-1000, 1000] map square
-      (constants from DT_WorldMapUIData). The world-map image is Pocketpair's
-      asset, so none is bundled — supply your own via URL or upload
-      (kept in localStorage).
-- [x] RCON console: Source-RCON client in the agent, command palette with
-      parameter forms + raw input. Built-in server commands always; when
-      PalDefender is installed its RCON-capable commands are added, filtered
-      by the live `/getrconcmds` list so plugin updates don't strand the UI.
-- [x] Saves & backups tab: list worlds (with the active one per
-      `DedicatedServerName`), switch worlds, per-player save deletion,
-      tar.gz backup / restore / download, and scheduled backups (interval,
-      retention, skip-when-empty). Restores take a safety backup first and
-      refuse to run while the server is up. Migration guide: [docs/MIGRATION.md](docs/MIGRATION.md)
-- [x] Automatic restarts: scheduled (interval or times of day), sustained
-      memory threshold, and crash recovery (rate-limited). Planned restarts
-      warn players and save first; a manual stop is never treated as a crash.
-- [x] Version check: shows the game version (REST `/info`, RCON `Info`
-      fallback) on the dashboard and the instance panel, compares the
-      installed depot manifest against Steam's public branch, and offers a
-      one-click update (background DepotDownloader run; server must be stopped)
-- [x] Engine.ini performance tab: tick rate, client rates, timeouts, frame
-      pacing and GC interval, with presets. Writes merge into Engine.ini,
-      preserving sections, keys and comments the GUI doesn't manage.
-- [ ] Multi-host aggregation in the UI, TLS guidance, i18n (reuse v1 locales)
+推一個 `v*` tag,[release workflow](.github/workflows/release.yml) 會在三種 OS 上各自產出:
+
+- `palserver-agent-<os>.zip` —— 給人手動下載
+- `palserver-agent-<os>.tar.gz` —— 給自我更新用
+- `palserver-web.zip` —— 可獨立部署的前端
+- `SHA256SUMS.txt` —— 自我更新一定會驗證它
+
+---
+
+## 現況
+
+**v2 目前是 alpha**(`2.0.0-alpha.0`)。上面列的功能都已經可用,但**還沒有發佈第一個 Release** ——
+在那之前請從原始碼建置(`pnpm release:exe`)。API 仍可能變動。
+
+尚未完成:多主機聚合管理;Docker 後端仍標示 beta(`images/modded` 尚未提供);PalDefender 的帕魯匯入規則等進階功能。
+規劃見 [TODO.md](TODO.md)。
+
+## 授權與連結
+
+MIT。
+
+- **常見問題:** <https://faq.toc.icu/>
+- **Discord:** <https://discord.gg/sgMMdUZd3V>
+- **安裝與連線教學(玩家向):** [docs/INSTALL.zh-TW.md](docs/INSTALL.zh-TW.md)
+- **存檔搬家:** [docs/MIGRATION.md](docs/MIGRATION.md)
+- **隱私權政策:** [PRIVACY.md](PRIVACY.md)
+- **v1(已停止維護):** <https://github.com/Dalufishe/palserver-GUI>
+
+由 [Dalufish](https://github.com/Dalufishe) 與核心團隊用愛製作。
