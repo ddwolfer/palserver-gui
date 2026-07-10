@@ -13,6 +13,10 @@
     "dev:agent": "pnpm --filter @palserver/agent dev",
     "dev:web": "pnpm --filter @palserver/web dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "bundle:agent": "pnpm --filter @palserver/shared build && pnpm --filter @palserver/agent build && node scripts/bundle-agent.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }

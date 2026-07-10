@@ -26,6 +26,9 @@ import { nativeDriver } from "./native.js";
 import { dockerDriver } from "./docker.js";
 import { registerRoutes } from "./routes.js";
 
+// 啟動流程包在 async main() 內,讓 entry 沒有頂層 await —— 這樣才能打包成
+// CommonJS 供 Node SEA 免安裝執行檔使用(頂層 await 只能輸出 ESM)。
+async function main() {
 const tls = TLS_ENABLED ? await loadOrCreateTlsCert() : null;
 const scheme = tls ? "https" : "http";
 const app = Fastify({
@@ -60,12 +63,9 @@ await app.register(cors, {
 });
 await app.register(websocket);
 
-// Serve the built web UI when present (packages/web/dist copied or resolved in-repo).
-const webDist = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../web/dist",
-);
-if (fs.existsSync(webDist)) {
+// Serve the built web UI when present.
+const webDist = resolveWebDist();
+if (webDist) {
   await app.register(fastifyStatic, {
     root: webDist,
     // index.html 不可快取,agent 更新後玩家瀏覽器才會立刻拿到新前端;
@@ -119,6 +119,31 @@ await app.listen({ host: HOST, port: PORT });
 
 app.log.info(`palserver-agent v${AGENT_VERSION} · data dir: ${DATA_DIR}`);
 printStartupBanner(scheme, PORT, pairingCode, token);
+}
+
+void main();
+
+/**
+ * 找出要 serve 的 web/dist,支援三種執行情境:
+ *  - PALSERVER_WEB_DIR 環境變數(明確指定)
+ *  - 執行檔旁的 web/ 資料夾(免安裝 exe / SEA:release 內含 web/)
+ *  - 相對於本模組的 ../../web/dist(開發時的 monorepo 佈局)
+ * 都找不到就回 null(agent 只提供 API,不 serve 前端)。
+ */
+function resolveWebDist(): string | null {
+  const candidates: string[] = [];
+  if (process.env.PALSERVER_WEB_DIR) candidates.push(process.env.PALSERVER_WEB_DIR);
+  candidates.push(path.join(path.dirname(process.execPath), "web"));
+  try {
+    candidates.push(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/dist"));
+  } catch {
+    /* 打包成 CJS 時 import.meta.url 為空,略過此候選 */
+  }
+  for (const c of candidates) {
+    if (c && fs.existsSync(path.join(c, "index.html"))) return c;
+  }
+  return null;
+}
 
 /** 收集本機各網卡的 IPv4,標出可能是 Tailscale(100.64.0.0/10)的位址。 */
 function localAddresses(): { ip: string; tailscale: boolean }[] {
