@@ -789,5 +789,17 @@
  "為確認,請輸入伺服器名稱與管理員密碼。": "To confirm, enter the server name and admin password.",
  "此伺服器未設定管理員密碼,密碼欄留空即可。": "This server has no admin password set — leave the password field blank.",
  "永久刪除": "Delete permanently",
- "刪除中…": "Deleting…"
+ "刪除中…": "Deleting…",
+ "匯出與複製": "Export & duplicate",
+ "把世界存檔與設定打包成壓縮檔下載。": "Download the world saves and settings as an archive.",
+ "不含可重新下載的遊戲檔案": "Game files (re-downloadable) are excluded",
+ ",所以檔案小、方便搬到別台。": "; it stays small and easy to move to another machine.",
+ "匯出成壓縮檔": "Export as archive",
+ "用相同設定與世界存檔開一個新伺服器(自動換新名稱與遊戲埠)。同樣不含遊戲檔案,新伺服器首次啟動會自行安裝。": "Create a new server with the same settings and world saves (a new name and game port are assigned automatically). Game files are excluded too; the new server installs them on first start.",
+ "複製伺服器": "Duplicate server",
+ "新伺服器名稱": "New server name",
+ "複製中…": "Duplicating…",
+ "建立複本": "Create copy",
+ "已複製為「{name}」(遊戲埠 {port}),可在伺服器列表找到它。": "Copied as \"{name}\" (game port {port}); find it in the server list.",
+ "請先停止伺服器再複製,才能得到乾淨的存檔複本。": "Stop the server before duplicating to get a clean copy of the saves."
 }

@@ -356,6 +356,59 @@ export function registerRoutes(
     reply.code(204);
   });
 
+  /** 匯出成 tar.gz 下載:存檔 + ini 設定 + PalDefender 設定,不含可重下的遊戲執行檔。
+   *  瀏覽器直接開這個網址下載(token 走 query,見 auth)。目前僅 native。 */
+  app.get("/api/instances/:id/export", async (req, reply) => {
+    const rec = getOr404((req.params as { id: string }).id);
+    if (rec.backend !== "native") {
+      return reply.code(400).send({ error: "export is only supported by the native backend" });
+    }
+    const stream = saves.exportArchiveStream(rec, ctxOf(rec));
+    if (!stream) {
+      return reply.code(409).send({ error: "nothing to export yet — start the server once to generate saves/config" });
+    }
+    const safe = rec.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    reply.header("content-type", "application/gzip");
+    reply.header("content-disposition", `attachment; filename="${safe}-export.tar.gz"`);
+    return stream;
+  });
+
+  /** 複製伺服器:用相同設定開一個新實例(換新名稱與新遊戲埠),並複製世界存檔與設定,
+   *  但不複製數十 GB 的遊戲執行檔(新實例自行安裝)。目前僅 native;需先停止來源。 */
+  app.post("/api/instances/:id/duplicate", async (req, reply) => {
+    const rec = getOr404((req.params as { id: string }).id);
+    if (rec.backend !== "native") {
+      return reply.code(400).send({ error: "duplicate is only supported by the native backend" });
+    }
+    const { status } = await driverOf(rec).status(rec, ctxOf(rec));
+    if (status === "running" || status === "restarting" || status === "installing" || isInstalling(rec.id)) {
+      return reply.code(409).send({ error: "stop the server before duplicating it" });
+    }
+    const body = z.object({ name: z.string().max(80).optional() }).parse(req.body ?? {});
+    // 名稱唯一:預設 <name>-copy,撞名就往後補號。
+    const base = body.name?.trim() || `${rec.name}-copy`;
+    let name = base;
+    for (let n = 2; store.findByName(name); n++) name = `${base}-${n}`;
+    // 遊戲埠:從來源埠 +1 往上找一個沒被占用的。
+    const usedPorts = new Set(store.list().map((r) => r.gamePort));
+    let gamePort = rec.gamePort + 1;
+    while (usedPorts.has(gamePort)) gamePort++;
+
+    const settings = WorldSettingsSchema.parse({ ...rec.settings, ServerName: name, PublicPort: gamePort });
+    // 新實例一律 agent 管理(不共用來源的外部安裝目錄)。
+    const created = store.create({ name, backend: "native", flavor: rec.flavor, gamePort, settings });
+    try {
+      saves.copyPortableData(serverRoot(rec, ctxOf(rec)), serverRoot(created, ctxOf(created)));
+    } catch (err) {
+      // 複製檔案失敗就把剛建立的實例收回,別留下半殘的實例。
+      store.remove(created.id);
+      throw err;
+    }
+    track("instance_created");
+    reply.code(201);
+    return toSummary(created);
+  });
+
   app.get("/api/instances/:id/stats", async (req, reply) => {
     const rec = getOr404((req.params as { id: string }).id);
     const stats = await driverOf(rec).stats(rec, ctxOf(rec));

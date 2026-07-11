@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { FiAlertTriangle, FiHardDrive, FiSave, FiTrash2 } from "react-icons/fi";
+import { FiAlertTriangle, FiCopy, FiDownloadCloud, FiHardDrive, FiSave, FiTrash2 } from "react-icons/fi";
 import type { InstanceDetail } from "@palserver/shared";
 import type { AgentClient } from "./api";
 import { CopyPath } from "./CopyPath";
 import { t, useI18n } from "./i18n";
-import { btn, btnDanger, card, errorCls, inputCls, labelCls } from "./ui";
+import { btn, btnDanger, btnGhost, card, errorCls, inputCls, labelCls } from "./ui";
 
 /**
  * 實例的「設定」分頁:目前放伺服器路徑修改與危險操作(刪除)。刻意和「世界設定」
@@ -28,14 +28,17 @@ export function InstanceSettingsTab({
   return (
     <div className="flex max-w-2xl flex-col gap-4">
       {detail.backend === "native" && (
-        <ServerPathCard
-          client={client}
-          instanceId={detail.id}
-          serverDir={detail.serverDir}
-          effectiveServerDir={detail.effectiveServerDir}
-          stopped={stopped}
-          onChanged={onChanged}
-        />
+        <>
+          <ServerPathCard
+            client={client}
+            instanceId={detail.id}
+            serverDir={detail.serverDir}
+            effectiveServerDir={detail.effectiveServerDir}
+            stopped={stopped}
+            onChanged={onChanged}
+          />
+          <ExportDuplicateCard client={client} detail={detail} stopped={stopped} />
+        </>
       )}
 
       <DangerZone
@@ -140,6 +143,125 @@ function ServerPathCard({
         </button>
       </div>
     </form>
+  );
+}
+
+/** 匯出成壓縮檔(存檔+設定,不含遊戲執行檔)、複製成新實例。 */
+function ExportDuplicateCard({
+  client,
+  detail,
+  stopped,
+}: {
+  client: AgentClient;
+  detail: InstanceDetail;
+  stopped: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [dupName, setDupName] = useState(`${detail.name}-copy`);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const duplicate = async () => {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const created = await client.duplicateInstance(detail.id, dupName.trim() || undefined);
+      setNotice(
+        t("已複製為「{name}」(遊戲埠 {port}),可在伺服器列表找到它。", {
+          name: created.name,
+          port: created.gamePort,
+        }),
+      );
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={`${card} flex flex-col gap-4`}>
+      <h3 className="inline-flex items-center gap-2 text-sm font-extrabold">
+        <FiDownloadCloud className="size-4 text-pal" /> {t("匯出與複製")}
+      </h3>
+
+      {/* 匯出 */}
+      <div className="flex flex-col gap-2">
+        <p className="text-[13px] text-ink-muted">
+          {t("把世界存檔與設定打包成壓縮檔下載。")}
+          <b className="text-ink">{t("不含可重新下載的遊戲檔案")}</b>
+          {t(",所以檔案小、方便搬到別台。")}
+        </p>
+        <div>
+          {/* 直接下載:GET + token 走 query。download 屬性讓瀏覽器存檔而非開新分頁。 */}
+          <a className={`${btnGhost} inline-flex items-center gap-1.5`} href={client.exportUrl(detail.id)} download>
+            <FiDownloadCloud className="size-4" /> {t("匯出成壓縮檔")}
+          </a>
+        </div>
+      </div>
+
+      {/* 複製 */}
+      <div className="flex flex-col gap-2 border-t border-line pt-3">
+        <p className="text-[13px] text-ink-muted">
+          {t("用相同設定與世界存檔開一個新伺服器(自動換新名稱與遊戲埠)。同樣不含遊戲檔案,新伺服器首次啟動會自行安裝。")}
+        </p>
+        {!open ? (
+          <div>
+            <button
+              className={`${btnGhost} inline-flex items-center gap-1.5`}
+              onClick={() => {
+                setOpen(true);
+                setNotice(null);
+              }}
+              disabled={!stopped}
+              title={stopped ? undefined : t("請先停止伺服器")}
+            >
+              <FiCopy className="size-4" /> {t("複製伺服器")}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 rounded-xl border-2 border-line bg-card-soft p-3">
+            <label className={labelCls}>
+              {t("新伺服器名稱")}
+              <input
+                className={inputCls}
+                value={dupName}
+                onChange={(e) => setDupName(e.target.value)}
+                autoFocus
+              />
+            </label>
+            <div className="flex gap-2">
+              <button
+                className={`${btn} inline-flex items-center gap-1.5`}
+                onClick={duplicate}
+                disabled={busy || !dupName.trim()}
+              >
+                <FiCopy className="size-4" /> {busy ? t("複製中…") : t("建立複本")}
+              </button>
+              <button
+                className="rounded-full px-4 py-2 text-sm font-extrabold text-ink-muted hover:text-ink"
+                onClick={() => setOpen(false)}
+              >
+                {t("取消")}
+              </button>
+            </div>
+          </div>
+        )}
+        {!stopped && (
+          <p className="rounded-xl bg-sun/10 px-3 py-2 text-xs font-bold text-sun">
+            {t("請先停止伺服器再複製,才能得到乾淨的存檔複本。")}
+          </p>
+        )}
+      </div>
+
+      {error && <p className={errorCls}>{error}</p>}
+      {notice && (
+        <p className="rounded-xl bg-grass/10 px-3 py-2 text-[13px] font-bold text-grass">{notice}</p>
+      )}
+    </div>
   );
 }
 

@@ -197,6 +197,21 @@ export class AgentClient {
     });
   }
 
+  /** 匯出下載網址(存檔+設定的 tar.gz;僅 native)。瀏覽器直接開它下載,token 走 query。 */
+  exportUrl(id: string): string {
+    const url = new URL(`${this.conn.url}/api/instances/${id}/export`);
+    url.searchParams.set("token", this.conn.token);
+    return url.toString();
+  }
+
+  /** 複製伺服器(僅 native):用相同設定+世界存檔開一個新實例,回傳新實例摘要。 */
+  duplicateInstance(id: string, name?: string): Promise<InstanceSummary> {
+    return this.request(`/api/instances/${id}/duplicate`, {
+      method: "POST",
+      body: JSON.stringify(name ? { name } : {}),
+    });
+  }
+
   stats(id: string): Promise<InstanceStats> {
     return this.request(`/api/instances/${id}/stats`);
   }
