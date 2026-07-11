@@ -168,7 +168,7 @@ export function InstanceDetailPage({
       {showConsole && (
         <Overlay onClose={() => setShowConsole(false)}>
           <div
-            className={`${card} flex max-h-[85vh] w-190 max-w-full flex-col gap-3 overflow-auto`}
+            className={`${card} flex max-h-[85vh] w-240 max-w-full flex-col gap-3 overflow-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
