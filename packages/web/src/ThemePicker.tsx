@@ -57,7 +57,7 @@ const THEMES: ThemeDef[] = [
     free: false,
     preview: {
       light: { bg: "#f0f9f4", card: "#ffffff", accent: "#12996a", ink: "#14241c", accentText: "#ffffff" },
-      dark: { bg: "#0e1c16", card: "#16261f", accent: "#24c78d", ink: "#eaf3ee", accentText: "#06140d" },
+      dark: { bg: "#163026", card: "#1f3b2e", accent: "#2bd196", ink: "#eefaf3", accentText: "#06140d" },
     },
   },
 ];

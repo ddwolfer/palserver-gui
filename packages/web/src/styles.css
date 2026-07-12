@@ -33,11 +33,12 @@
    @theme can't be nested inside @media.
 
    主題模式(theme.tsx 控制 html 的 data-theme):
-   - 沒有 data-theme = 跟隨系統(media query 生效,但手動選淺色時排除);
-   - data-theme="dark" = 手動深色,無條件套用。
-   兩個選擇器共用同一組變數,改色票時記得兩處一起改。 */
+   - 沒有 data-theme = auto,跟隨系統(只有這時 media query 生效);
+   - data-theme="light"/"dark" = 帕魯原色手動深淺;
+   - data-theme="silver-*"/"emerald-*" = 其他主題,一律走自己的區塊。
+   media 只鎖 :not([data-theme]),避免誤套到 silver-light/emerald-light 等淺色主題。 */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
     color-scheme: dark;
     --color-sky-soft: #232030;
     --color-card: #2d2a3b;
@@ -164,25 +165,25 @@
   background-image: linear-gradient(180deg, rgb(18 153 106 / 0.05), rgb(18 153 106 / 0) 120px);
 }
 
-/* ── 翡翠棲地 · 深色:森林墨綠 + 亮翡翠 + 微綠光暈 ── */
+/* ── 翡翠棲地 · 深色:森林綠(調亮一階)+ 亮翡翠 + 微綠光暈 ── */
 :root[data-theme="emerald-dark"] {
   color-scheme: dark;
-  --color-sky-soft: #0e1c16;
-  --color-card: #16261f;
-  --color-card-soft: #1d3128;
-  --color-ink: #eaf3ee;
-  --color-ink-muted: #90a89b;
-  --color-pal: #24c78d;
-  --color-pal-strong: #3fdba1;
-  --color-line: #274135;
-  --shadow-cute: 0 8px 22px rgb(0 0 0 / 0.5);
-  --shadow-cute-hover: 0 12px 30px rgb(0 0 0 / 0.62);
+  --color-sky-soft: #163026;
+  --color-card: #1f3b2e;
+  --color-card-soft: #284a3a;
+  --color-ink: #eefaf3;
+  --color-ink-muted: #9cb8a9;
+  --color-pal: #2bd196;
+  --color-pal-strong: #46e0a8;
+  --color-line: #35573f;
+  --shadow-cute: 0 8px 22px rgb(0 0 0 / 0.42);
+  --shadow-cute-hover: 0 12px 30px rgb(0 0 0 / 0.55);
 }
 :root[data-theme="emerald-dark"] body {
-  background-color: #0e1c16;
+  background-color: #163026;
   background-image:
-    radial-gradient(1200px 620px at 12% -12%, rgb(36 199 141 / 0.16), transparent 58%),
-    radial-gradient(1000px 560px at 100% 0%, rgb(36 199 141 / 0.10), transparent 55%);
+    radial-gradient(1200px 620px at 12% -12%, rgb(43 209 150 / 0.18), transparent 60%),
+    radial-gradient(1000px 560px at 100% 0%, rgb(43 209 150 / 0.12), transparent 56%);
   background-attachment: fixed;
 }
 :root[data-theme="emerald-dark"] .bg-pal {
