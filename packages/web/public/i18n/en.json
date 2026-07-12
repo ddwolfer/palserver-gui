@@ -143,6 +143,8 @@
  "上傳檔案": "Upload files",
  "這個資料夾是空的。": "This folder is empty.",
  "編輯": "Edit",
+ "已修改的帕魯": "Modified Pals",
+ "這裡列出已寫入 PalSchema 的所有物種數值調整;點「編輯」可載回上方表單修改。": "All species stat changes written to PalSchema are listed here; click Edit to load one back into the form above.",
  "檔案管理": "File manager",
  "有未儲存的變更,確定要關閉嗎?": "There are unsaved changes. Close anyway?",
  "儲存": "Save",
