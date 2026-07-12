@@ -333,7 +333,7 @@ function CreateDialog({
             <option value="native" disabled={!availableBackends.includes("native")}>{t("原生(直接在這台主機上運行,推薦)")}</option>
             <option value="docker" disabled={!availableBackends.includes("docker")}>{t("Docker 容器(beta)")}</option>
             {advancedMode && (
-              <option value="k8s" disabled={!availableBackends.includes("k8s")}>{t("Kubernetes(遙控叢集內的 StatefulSet)")}</option>
+              <option value="k8s" disabled={!availableBackends.includes("k8s")}>{t("Kubernetes(beta)")}</option>
             )}
           </Select>
         </label>
