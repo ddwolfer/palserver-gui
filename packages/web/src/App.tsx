@@ -4,6 +4,7 @@ import { FiDownload, FiHeart, FiHelpCircle, FiPlus, FiSettings, FiAlertTriangle 
 import type { Backend, InstanceSummary } from "@palserver/shared";
 import { AgentClient, loadConnection, saveConnection, type Connection } from "./api";
 import { usePromoConfig } from "./promoConfig";
+import { MapTab } from "./MapTab";
 import { ConnectFlow } from "./ConnectFlow";
 import { SettingsModal } from "./SettingsModal";
 import { CreditsModal } from "./CreditsModal";
@@ -16,6 +17,10 @@ import { LangSelect, useI18n } from "./i18n";
 import { Overlay, Select, StatusBadge, btn, btnGhost, card, errorCls, inputCls, labelCls } from "./ui";
 
 export default function App() {
+  // 全螢幕地圖是前端的另一個入口(/map?instance=<id>),從主介面地圖的外連按鈕開新分頁。
+  // 這裡在最前面攔截,直接渲染獨立的地圖頁,不套主介面的外殼。
+  if (window.location.pathname.replace(/\/+$/, "") === "/map") return <MapPage />;
+
   const [conn, setConn] = useState<Connection | null>(() => {
     // 網址帶 ?setup= 時強制重新配對:忽略可能已過期的舊連線,交給 ConnectFlow
     // 用連結裡的配對碼換一把新 token。否則沿用上次存的連線。
@@ -43,6 +48,26 @@ export default function App() {
       <SiteFooter />
     </>
   );
+}
+
+/** 全螢幕地圖獨立頁(/map?instance=<id>)。沿用主介面存下的連線,直接把某個實例的
+ *  線上地圖鋪滿整個視窗;沒有連線或沒帶 instance 時提示回主介面開啟。 */
+function MapPage() {
+  const { t } = useI18n();
+  const conn = loadConnection();
+  const instanceId = new URLSearchParams(window.location.search).get("instance");
+  const client = useRef<AgentClient | null>(conn ? new AgentClient(conn, () => {}) : null).current;
+
+  if (!client || !instanceId) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-lg font-extrabold">{t("無法載入地圖")}</p>
+        <p className="text-[13px] text-ink-muted">{t("請從主介面的線上地圖開啟全螢幕地圖。")}</p>
+        <a className={btn} href="/">{t("回主介面")}</a>
+      </div>
+    );
+  }
+  return <MapTab client={client} instanceId={instanceId} fullscreen />;
 }
 
 function Shell({ conn, onDisconnect }: { conn: Connection; onDisconnect: () => void }) {
