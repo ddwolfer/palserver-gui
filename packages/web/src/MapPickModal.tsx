@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { FiMapPin, FiX } from "react-icons/fi";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { mapToSav } from "@palserver/shared";
 import { t, useI18n } from "./i18n";
 import { Overlay, btn, btnGhost, card } from "./ui";
 
@@ -11,8 +10,10 @@ const MAP_IMAGE = "/palworld-full-map.jpg";
 const IMAGE_BOUNDS = L.latLngBounds([-2125.3, -1922.44], [1031.13, 1233.99]);
 
 /**
- * 地圖描點選座標:點地圖放圖釘,回傳 tp / spawn 等指令用的 Unreal 世界座標
- * 字串「X Y」(高度 Z 由伺服器自動找地面)。與線上地圖共用同一套座標轉換。
+ * 地圖描點選座標:點地圖放圖釘,回傳 PalDefender tp / spawn 指令用的「地圖小座標」
+ * 字串「X Y」(高度 Z 由伺服器自動找地面)。tp 吃的就是地圖座標(-1000~1000),
+ * 而 Leaflet CRS.Simple 的 latlng 本身即 [mapY(北), mapX(東)],所以 X=lng、Y=lat,
+ * 不需再換算世界座標。與線上地圖共用同一套座標系。
  */
 export function MapPickModal({
   onPick,
@@ -41,9 +42,8 @@ export function MapPickModal({
     map.setView(IMAGE_BOUNDS.getCenter(), -2);
 
     const onClick = (e: L.LeafletMouseEvent) => {
-      // Leaflet latlng = [lat=mapY(北), lng=mapX(東)] → 逆轉成世界座標。
-      const sav = mapToSav(e.latlng.lng, e.latlng.lat);
-      setWorld({ x: Math.round(sav.x), y: Math.round(sav.y) });
+      // Leaflet latlng = [lat=mapY(北), lng=mapX(東)];tp 吃地圖座標 X Y = mapX mapY。
+      setWorld({ x: Math.round(e.latlng.lng), y: Math.round(e.latlng.lat) });
       if (markerRef.current) markerRef.current.setLatLng(e.latlng);
       else {
         markerRef.current = L.circleMarker(e.latlng, {
@@ -81,7 +81,7 @@ export function MapPickModal({
   return (
     <Overlay onClose={onClose}>
       <div
-        className={`${card} flex h-[80vh] w-[820px] max-w-full flex-col gap-3`}
+        className={`${card} flex h-[80vh] w-205 max-w-full flex-col gap-3`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between">
@@ -95,7 +95,7 @@ export function MapPickModal({
         <p className="shrink-0 text-xs text-ink-muted">
           {t("點地圖任一處放置圖釘,選好按「使用此座標」。傳送高度(Z)由伺服器自動找地面。")}
         </p>
-        <div ref={elRef} className="min-h-0 flex-1 overflow-hidden rounded-(--radius-cute) border-2 border-line" />
+        <div ref={elRef} className="min-h-0 flex-1 overflow-hidden rounded-cute border-2 border-line" />
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <span className="font-mono text-sm text-ink-muted">
             {world ? `X ${world.x}  Y ${world.y}` : t("尚未選點")}

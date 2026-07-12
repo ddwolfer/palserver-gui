@@ -447,19 +447,13 @@ export const WORLD_OFFSET = { northSouth: 123888, eastWest: -158000 } as const;
 export const WORLD_SCALE = 459;
 export const MAP_BOUND = 1000;
 
-/** Map coordinates as the game shows them: x grows east, y grows north. */
+/** Map coordinates as the game shows them: x grows east, y grows north.
+ *  這組小座標(約 -1000~1000)正是 PalDefender tp / spawn 等指令吃的「Map coordinates」,
+ *  所以地圖描點直接用 Leaflet 的 latlng(lat=mapY, lng=mapX)即可,不需再轉世界座標。 */
 export function savToMap(savX: number, savY: number): { x: number; y: number } {
   return {
     x: (savY + WORLD_OFFSET.eastWest) / WORLD_SCALE,
     y: (savX + WORLD_OFFSET.northSouth) / WORLD_SCALE,
-  };
-}
-
-/** Inverse of savToMap:圖上座標(x 東、y 北)→ Unreal 世界座標(給 tp 等指令用)。 */
-export function mapToSav(mapX: number, mapY: number): { x: number; y: number } {
-  return {
-    x: mapY * WORLD_SCALE - WORLD_OFFSET.northSouth,
-    y: mapX * WORLD_SCALE - WORLD_OFFSET.eastWest,
   };
 }
 
