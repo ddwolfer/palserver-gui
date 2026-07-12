@@ -361,6 +361,7 @@ export function registerRoutes(
       flavor: input.flavor,
       gamePort: input.gamePort,
       queryPort: store.nextQueryPort(),
+      dockerImage: input.backend === "docker" ? input.dockerImage?.trim() || undefined : undefined,
       serverDir,
       serverDirManaged,
       settings,

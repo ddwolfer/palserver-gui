@@ -72,15 +72,19 @@ export async function createContainer(
     bindings["8212/tcp"] = [{ HostPort: "0" }];
   }
 
+  // 自訂鏡像優先(沿用已部署的其他帕魯鏡像);否則用內建 vanilla/modded 映像。
+  const image = rec.dockerImage?.trim() || IMAGES[rec.flavor];
   const imageExists = await docker
-    .getImage(IMAGES[rec.flavor])
+    .getImage(image)
     .inspect()
     .then(() => true)
     .catch(() => false);
   if (!imageExists) {
     const err = new Error(
-      `server image "${IMAGES[rec.flavor]}" not found — build it first: ` +
-        `docker build -t ${IMAGES[rec.flavor]} images/${rec.flavor}`,
+      rec.dockerImage?.trim()
+        ? `找不到自訂鏡像 "${image}" — 請先 docker pull 該鏡像,或確認名稱/標籤正確`
+        : `server image "${image}" not found — build it first: ` +
+            `docker build -t ${image} images/${rec.flavor}`,
     ) as Error & { statusCode: number };
     err.statusCode = 409;
     throw err;
@@ -88,7 +92,7 @@ export async function createContainer(
 
   const container = await docker.createContainer({
     name: containerName(rec),
-    Image: IMAGES[rec.flavor],
+    Image: image,
     Labels: { [INSTANCE_LABEL]: rec.id },
     ExposedPorts: ports,
     HostConfig: {

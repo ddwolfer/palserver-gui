@@ -61,6 +61,9 @@ export const CreateInstanceSchema = z.object({
   name: z.string().trim().min(1).max(40),
   backend: BackendSchema.default("native"),
   flavor: z.enum(["vanilla", "modded"]).default("vanilla"),
+  /** docker only: 自訂容器鏡像(如 ghcr.io/…/palworld:tag);省略則用內建的
+   * vanilla/modded 映像。方便沿用已在 Docker 部署的其他帕魯鏡像。 */
+  dockerImage: z.string().trim().max(200).optional(),
   /** UDP port the server listens on (host port for docker). */
   gamePort: z.number().int().min(1024).max(65535).default(8211),
   /** native only: custom server directory (absolute path). An existing

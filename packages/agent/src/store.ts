@@ -14,6 +14,8 @@ export interface InstanceRecord {
    * 裡,所以同一台開第二台一定撞(第二台綁不到就死在開機)。每台自動分配唯一值,
    * 啟動時以 -queryport + Engine.ini GameServerQueryPort 兩管道套用。 */
   queryPort?: number;
+  /** docker only: 自訂容器鏡像;undefined = 用內建 IMAGES[flavor]。 */
+  dockerImage?: string;
   /** native only: custom server root; undefined = agent-managed install
    * under instanceDir/server. */
   serverDir?: string;
