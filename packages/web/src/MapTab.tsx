@@ -46,6 +46,17 @@ function guildColor(id: string): string {
   return `hsl(${hash % 360} 70% 52%)`;
 }
 
+/** Connection-quality colour from ping (ms): green / amber / red. */
+function pingColor(ping: number): string {
+  if (ping < 80) return "#4fb968";
+  if (ping < 150) return "#e0a53f";
+  return "#e05b5b";
+}
+
+/** How close (in map units, ±1000 span) an online player must be to a base of
+ * a *different* guild to flag a possible raid. */
+const RAID_RADIUS = 70;
+
 /** Same deterministic "random Pal" avatar as the player list (PlayerAvatar):
  * hash the userId and pick a Pal that has artwork. Returns its icon URL. */
 function avatarIconUrl(seed: string, gameData: GameData | null): string | null {
@@ -374,6 +385,20 @@ function PlayerMap({
     for (const g of guilds) for (const uid of g.members) guildByMember.set(uid, g);
     const guildOf = (p: RestPlayer) => guildByMember.get(p.playerId) ?? guildByMember.get(p.userId);
 
+    // All bases in map coords, for the raid-proximity check. (Independent of the
+    // base-marker toggle — a player near an enemy base is flagged regardless.)
+    const allBases = guilds.flatMap((g) =>
+      g.bases.map((b) => ({ ...savToMap(b.worldX, b.worldY), guildId: g.id, guildName: g.name })),
+    );
+    /** Name of a *different* guild whose base this point sits near, else null. */
+    const enemyBaseNear = (px: number, py: number, ownGuildId?: string): string | null => {
+      for (const b of allBases) {
+        if (b.guildId === ownGuildId) continue;
+        if (Math.hypot(b.x - px, b.y - py) < RAID_RADIUS) return b.guildName;
+      }
+      return null;
+    };
+
     // Guild bases first (under players). world_pos → savToMap, same frame.
     // The whole guild feature is sponsor-only, so if we have any guild data the
     // viewer is a sponsor — bases are always coloured, named, and clickable.
@@ -406,32 +431,40 @@ function PlayerMap({
 
     if (showPlayers)
       for (const p of players) {
-      const { x, y } = savToMap(p.location_x, p.location_y);
-      const iconUrl = avatarIconUrl(p.userId, gameData);
-      const guild = guildOf(p);
-      const ring = guild ? guildColor(guild.id) : "#ffffff";
-      // A round Pal-avatar pin (same random Pal as the player list), built as a
-      // div-icon so it can hold an <img>. The border is the guild colour when
-      // the player is in one. Details show on hover, not always.
-      const icon = L.divIcon({
-        className: "pmap-avatar-wrap",
-        iconSize: [SIZE, SIZE],
-        iconAnchor: [SIZE / 2, SIZE / 2],
-        tooltipAnchor: [0, -SIZE / 2],
-        html: `<span class="pmap-avatar" style="width:${SIZE}px;height:${SIZE}px;border-color:${ring}">${
-          iconUrl ? `<img src="${escapeHtml(iconUrl)}" alt="" />` : ""
-        }</span>`,
-      });
-      const marker = L.marker([y, x], { icon, riseOnHover: true });
-      marker.bindTooltip(
-        `<div style="font-weight:800">${escapeHtml(p.name || "—")}</div>` +
-          (guild ? `<div style="color:${ring}">${escapeHtml(guild.name)}</div>` : "") +
-          `<div>${t("座標")} ${Math.round(x)}, ${Math.round(y)} · Lv.${p.level}</div>`,
-        { direction: "top", className: "pmap-detail" },
-      );
-      marker.on("click", () => onPlayerClickRef.current?.(p.userId, p.name));
-      group.addLayer(marker);
-    }
+        const { x, y } = savToMap(p.location_x, p.location_y);
+        const iconUrl = avatarIconUrl(p.userId, gameData);
+        const guild = guildOf(p);
+        const ring = guild ? guildColor(guild.id) : "#ffffff";
+        const raidingGuild = enemyBaseNear(x, y, guild?.id);
+        const png = pingColor(p.ping);
+        // A round Pal-avatar pin (same random Pal as the player list), built as a
+        // div-icon so it can hold an <img>. Border = guild colour; a corner dot
+        // shows connection quality (ping); a red halo flags a possible raid
+        // (standing near another guild's base). Details show on hover.
+        const icon = L.divIcon({
+          className: "pmap-avatar-wrap",
+          iconSize: [SIZE, SIZE],
+          iconAnchor: [SIZE / 2, SIZE / 2],
+          tooltipAnchor: [0, -SIZE / 2],
+          html:
+            `<span class="pmap-avatar${raidingGuild ? " pmap-raid" : ""}" style="width:${SIZE}px;height:${SIZE}px;border-color:${ring}">` +
+            (iconUrl ? `<img src="${escapeHtml(iconUrl)}" alt="" />` : "") +
+            `<i class="pmap-ping" style="background:${png}"></i>` +
+            `</span>`,
+        });
+        const marker = L.marker([y, x], { icon, riseOnHover: true });
+        marker.bindTooltip(
+          `<div style="font-weight:800">${escapeHtml(p.name || "—")}</div>` +
+            (guild ? `<div style="color:${ring}">${escapeHtml(guild.name)}</div>` : "") +
+            `<div>${t("座標")} ${Math.round(x)}, ${Math.round(y)} · Lv.${p.level} · ${Math.round(p.ping)}ms</div>` +
+            (raidingGuild
+              ? `<div style="color:#e05b5b;font-weight:700">${t("靠近他人據點:{name}", { name: escapeHtml(raidingGuild) })}</div>`
+              : ""),
+          { direction: "top", className: "pmap-detail" },
+        );
+        marker.on("click", () => onPlayerClickRef.current?.(p.userId, p.name));
+        group.addLayer(marker);
+      }
   }, [players, guilds, showPlayers, showBases, gameData]);
 
   return <div ref={containerRef} className="h-full w-full rounded-xl bg-card-soft" />;
