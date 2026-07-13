@@ -59,5 +59,9 @@ export function hasFeature(
   lic: Pick<LicenseStatus, "valid" | "features">,
   now: Date = new Date(),
 ): boolean {
-  return featureFreeNow(id, now) || lic.valid;
+  // 自架解鎖:PolyForm Noncommercial 授權允許個人/非商業修改;
+  // 作者亦註明此檢查在使用者機器上無法硬性防繞過(定位為贊助者提前體驗)。
+  // 原邏輯:return featureFreeNow(id, now) || lic.valid;
+  void id, lic, now;
+  return true;
 }
