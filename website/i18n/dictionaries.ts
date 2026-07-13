@@ -107,7 +107,7 @@ const zh: Dictionary = {
     shotAlt: 'palserver GUI 伺服器總覽畫面:狀態、玩家、效能一目了然',
     shotLabel: 'palserver GUI',
   },
-  stats: { labels: ['需要記的指令', '管理分頁, 一頁包辦', '介面語言', '開源 · 非商業用途'], free: '免費' },
+  stats: { labels: ['需要記的指令', '管理分頁, 一頁包辦', '啟動伺服器', '開源 · 非商業用途'], free: '免費' },
   why: {
     eyebrow: '為什麼需要它',
     h2: '開專用伺服器, 不該是一場惡夢。',
@@ -301,7 +301,7 @@ const en: Dictionary = {
     shotAlt: 'palserver GUI server overview: status, players and performance at a glance',
     shotLabel: 'palserver GUI',
   },
-  stats: { labels: ['commands to memorize', 'management tabs, all in one', 'interface languages', 'open source · non-commercial'], free: 'Free' },
+  stats: { labels: ['commands to memorize', 'management tabs, all in one', 'server starts', 'open source · non-commercial'], free: 'Free' },
   why: {
     eyebrow: 'Why you need it',
     h2: 'Running a dedicated server should not be a nightmare.',
@@ -495,7 +495,7 @@ const ja: Dictionary = {
     shotAlt: 'palserver GUI サーバー概要画面:状態・プレイヤー・パフォーマンスが一目瞭然',
     shotLabel: 'palserver GUI',
   },
-  stats: { labels: ['覚えるコマンド数', '管理タブ、1 ページに集約', 'インターフェース言語', 'オープンソース · 非商用'], free: '無料' },
+  stats: { labels: ['覚えるコマンド数', '管理タブ、1 ページに集約', 'サーバー起動回数', 'オープンソース · 非商用'], free: '無料' },
   why: {
     eyebrow: 'なぜ必要か',
     h2: '専用サーバーの運用は、悪夢であるべきではない。',
